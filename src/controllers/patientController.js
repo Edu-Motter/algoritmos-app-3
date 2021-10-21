@@ -1,5 +1,6 @@
 const Patient = require("../models/Patient");
 const Physician = require("../models/Physician");
+const Appointment = require("../models/Appointment");
 const Sequelize = require("sequelize");
 
 module.exports = {
@@ -29,7 +30,7 @@ module.exports = {
         });
 
         if(isPatientNew)
-            res.status(403).json({msg:"Paciente ja cadastrado"});
+            res.status(403).json({msg:"Paciente já cadastrado"});
         else {
             const patient = await Patient.create({
                 name, 
@@ -39,24 +40,25 @@ module.exports = {
                 res.status(500).json({msg:"Nao foi possivel inserir dados"});
             });
             if (patient)
-                res.status(201).json({msg:"Novo paciente adicionado"});
+                res.status(201).json({msg:"Novo paciente adicionado com sucesso"});
             else 
-                res.status(404).json({msg:"nao foi possivel cadastrar novo paciente"});
+                res.status(404).json({msg:"Nao foi possivel cadastrar novo paciente"});
         }
     },
 
     async searchPatientByName(req, res){
-        const name = req.body.name;
+        const name = req.query.name;
         if (!name)
             res.status(400).json({
                 msg:"parametro obrigatorio vazio",
             });
         const Op = Sequelize.Op;
         const patients = await Patient.findAll({
-            where: {name:{ [Op.like]: "%" + name + "%" } },
+            where: {name: { [Op.like]: "%" + name + "%" } },
         });
-        console.log(patients);
+        
         if (patients) {
+            console.log(patients);
             if (patients == "")
                 res.status(404).json({msg:"Nao ha pacientes com esse nome"});
             else res.status(200).json({patients});
@@ -64,23 +66,27 @@ module.exports = {
     },
 
     async searchPatientByPhysician (req, res){
-        const physicianId = req.params.physicianId;
-        if (!physicianId)
+        const id = req.query.id;
+        if (!id)
             res.status(400).json({
                 msg:"campo medico vazio"
             });
 
         const patients = await Patient.findAll({
-            where: { physicianId },
-        }).catch((error)=> res.status(500).json({msg:"falha na conexao"}));
+            include: {
+                model: Appointment,
+                where: { physicianId : id },
+                required: true,
+            }
+        }).catch((error)=> res.status(500).json([{msg:"Erro 500 no servidor"}, {error: error}]));
+        
         if(patients){
             if(patients == "")
                 res.status(404).json({msg:"nao ha pacientes para esse medico"});
             else res.status(200).json({patients});
         } else res.status(404).json({msg:"nao foi possivel encontar pacientes"});
-        
-    }
-    ,
+    },
+    
     async updatePatient(req, res){
         const patientId = req.body.id;
         const patient = req.body;
