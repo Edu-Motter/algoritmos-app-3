@@ -6,11 +6,30 @@ module.exports = {
     async newAppointment(req, res){
         const {description, appointmentDate, patientId, physicianId} = req.body;
         if (!description || !appointmentDate || !patientId || !physicianId){
-            res.status(400).json({
+            return res.status(403).json({
                 error : "Dados obrigatórios não foram preenchidos"
-            });
+            });   
+        }
+        //Validar se existe o paciente:
+        const patientExists = await Patient.findOne({
+            where: [
+                {id : patientId},
+            ]
+        });
+        if (!patientExists){
+            return res.status(403).json({msg:"Paciente não encontrado, consulta não pode ser criada"});
+        } 
+        //Valida se existe o medico:
+        const physicianExists = await Physician.findOne({
+            where: [
+                {id : physicianId},
+            ]
+        });
+        if (!physicianExists){
+            return res.status(403).json({msg:"Médico não encontrado, consulta não pode ser criada"});
         }
 
+        //Valida se a consulta ja existe:
         const appointmentExists = await Appointment.findOne({
             where: [
                 {"patientId": patientId},
@@ -18,51 +37,45 @@ module.exports = {
                 {"appointmentDate": appointmentDate}
             ]
         });
-
         if(appointmentExists)
-            res.status(403).json({msg:"Consulta já existente"});
-        else {
-            //Validar se existe o paciente e o medico informado:
+            return res.status(403).json({msg:"Consulta já existente para nessa data com esse paciente e médico"});
+        
+        //Se os dois existirem, inserir:
+        const appointment = await Appointment.create({
+            description, 
+            appointmentDate,
+            patientId,
+            physicianId
+        }).catch((error)=>{
+            return res.status(500).json({msg:"Erro interno no servidor"});
+        });
 
-            //Se os dois existirem, inserir:
-            const appointment = await Appointment.create({
-                description, 
-                appointmentDate,
-                patientId,
-                physicianId
-            }).catch((error)=>{
-                res.status(500).json({msg:"Nao foi possivel inserir dados"});
-            });
-            if (appointment)
-                res.status(201).json({msg:"Consulta criada com sucesso"});
-            else 
-                res.status(404).json({msg:"Nao foi possivel criar nova consulta"});
-        }
+        if (appointment)
+            return res.status(201).json({msg:"Consulta criada com sucesso"});
+        else 
+            return res.status(404).json({msg:"Erro ao criar nova consulta"});
     },
 
     async deleteAppointment(req, res){
         const appointmentId = req.query.id;
+
         const deletedAppointment = await Appointment.destroy({
             where: {id : appointmentId},
         }).catch(async (error)=>{
-            const appointmentHasRef = await Appointment.findOne({
-                where:{id: appointmentId},
-            }).catch((error)=>{
-                res.status(500).json({msg:"Erro interno no servidor"});
-            });
-            if(appointmentHasRef)
-                return res.status(403).json({msg:"A Consulta ainda possui medico e/ou paciente relacionados"});
+            return res.status(500).json({msg:"Erro interno no servidor"});
         });
-        if(deletedAppointment !== 0)
+
+        if(deletedAppointment)
             res.status(200).json({msg:"Consulta excluída com sucesso"});
-        else res.status(404).json({msg:"Consulta não encontrada"});
+        else
+            res.status(404).json({msg:"Consulta não foi encontrada"});
     },
 
     async listAllAppointments(req, res){
         const appointments = await Appointment.findAll({
             order: [["description", "ASC"]]
         }).catch((error) => {
-            res.status(500).json({msg: "Falha na conexão.", error: error});
+            res.status(500).json({msg: "Erro interno no servidor", error: error});
         });
 
         if (appointments) 

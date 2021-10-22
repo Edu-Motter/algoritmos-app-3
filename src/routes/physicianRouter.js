@@ -8,5 +8,4 @@ physicianRouter.delete("/deletePhysician", physicianController.deletePhysician);
 physicianRouter.put("/updatePhysician", physicianController.updatePhysician);
 
 
-
 module.exports = physicianRouter;
