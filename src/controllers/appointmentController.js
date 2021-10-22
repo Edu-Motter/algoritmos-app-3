@@ -53,7 +53,7 @@ module.exports = {
             if(appointmentHasRef)
                 return res.status(403).json({msg:"A Consulta ainda possui medico e/ou paciente relacionados"});
         });
-        if(deletedPhysician !== 0)
+        if(deletedAppointment !== 0)
             res.status(200).json({msg:"Consulta excluída com sucesso"});
         else res.status(404).json({msg:"Consulta não encontrada"});
     },

@@ -1,4 +1,5 @@
 const Physician = require("../models/Physician");
+const Appointment = require("../models/Appointment");
 
 module.exports = {
     async listAllPhysicians(req, res){
@@ -15,12 +16,12 @@ module.exports = {
     },
 
     async deletePhysician(req, res){
-        const physicianId = req.params.id;
+        const physicianId = req.query.id;
         const deletedPhysician = await Physician.destroy({
             where: {id:physicianId},
         }).catch(async (error)=>{
-            const physicianHasRef = await Physician.findOne({
-                where:{id: physicianId},
+            const physicianHasRef = await Appointment.findOne({
+                where:{physicianId: physicianId},
             }).catch((error)=>{
                 res.status(500).json({msg:"falha na conexao"});
             });
